@@ -1,0 +1,285 @@
+---
+title: "Cárdenas, Kim, Tureson_Peer-Review Posting"
+authors: "Sofia Cárdenas, Alice Kim, and Kayla Tureson"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+---
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Questions
+
+Question One:
+  
+Are expectant fathers' testosterone levels during the prenatal period explained by  between-level or within-level expectant mothers' testosterone (i.e., hormonal synchrony). More specifically, do expectant mothers' testosterone levels during the prenatal period predict expectant fathers' testosterone levels during the same period? Of note, we assess between and within-level testosterone in as this is a common practice in hormonal literature (see Saxbe et al., 2017).
+
+Question Two:
+
+Does couples' prenatal hormonal synchrony predict fathers' postpartum satisfaction in the couple relationship?  
+
+#  Relevant background
+Lower testosterone levels are associated with parent nurturing behavior (Alvergne et al., 2009; van Anders, 2013). Expectant fathers in coupled relationships show decreases in testosterone during the prenatal period (Edelstein et al., 2015). Couples in romantic relationships tend to show physiological linkage, including in the sympathetic nervous system (i.e., heart rate) and the hypothalamic-pituitary system (i.e., hormones; Timmons et al., 2015). During the prenatal period, hormonal synchrony between mothers and fathers is associated with more significant investment in the partner and infant relationship (Saxbe et al., 2017). However, less is known whether couple hormonal synchrony across the transition to parenthood (prenatal and postpartum) is positively correlated with relationship satisfaction above baseline couple relationship satisfaction levels. Given that testosterone fluctuates over the transition to parenthood and that the couple relationship is predictive of hormonal synchrony, multilevel modeling will assess testosterone between and within dyads.
+
+# Nesting structure of the data
+```{r Nesting Structure of the data}
+
+knitr::include_graphics("/Users/sofiacardenas/Desktop/MLM(psyc575)/Final_Project/Data.png")
+```
+
+As you will notice from the picture, each couple comprises a mother (M1) and father (D1). Each mother and father provides testosterone samples at T1 (prenatal) and T2 (postpartum). At both time points, three testosterone samples are collected over three hours (1st, 2nd, 3rd). Couples also each report relationship satisfaction at prenatal and postpartum time points (not shown in the picture). We focus on prenatal testosterone data for this project and postpartum relationship satisfaction. Also, of note, we have 100 couples in the sample, but there are missing hormone data for multiple participants so that some participants will be dropped from analyses. 
+
+# Testosterone sampling
+
+To provide more detail, during the prenatal and postpartum visits, both mothers and fathers provide six 1mL samples of saliva. Participants are given 5 minutes to passively drool down a little straw until the collection tube fills halfway. Samples are collected at about 20-minute intervals (exact intervals can be found in each protocol), and the exact start and finish times are recorded by research assistants. These saliva samples are assessed to measure hormone levels (testosterone). We do not go into detail on processing in this document, but we will provide more information at our presentation. (stay tuned...!)
+
+# A preliminary plan for statistical analysis
+We first want to note that we define hormonal synchrony as mothers' testosterone predicting fathers' testosterone. 
+Question 1 plan for statistical analysis: 
+
+Broadly, for testing our first aim (expectant fathers' testosterone levels during the prenatal period are explained by within couple linkage), a two-level MLM model will be used. At Level 1 (the individual-level), our outcome variable was fathers' mean testosterone levels from the first visit (prenatal). We will include one predictor: the mothers' testosterone level from that same visit. Given that we expect each couple is its unique nested unit, we will allow slopes to vary for expectant mothers' prenatal testosterone. 
+
+Question 2 plan for statistical analysis:
+
+To test our second aim (couples' prenatal partner synchrony related to fathers' postpartum satisfaction in the couple relationship), we will run a separate model with couples' prenatal synchrony as a predictor of postpartum relationship satisfaction. 
+
+# Repository statement
+
+The data analytic scripts and supplemental materials for this project will be available at https://github.com/sicarden/Synchrony_MLM_Fall2020.git.
+
+# References
+
+Alvergne, A., Faurie, C., & Raymond, M. (2009). Variation in testosterone levels and male reproductive effort: insight from a polygynous human population. Horm. Behav. 56,491–497.
+
+Edelstein, R.S., Wardecker, B.M., Chopik, W.J., Moors, A.C., Shipman, E.L., & Lin, N.J. (2015). Prenatal hormones in first-time expectant parents: Longitudinal changes and within-couple correlations. Am. J. Hum. Biol. 27, 317–325.
+
+Saxbe, D.E., Edelstein, R.S., Lyden, H.M., Wardecker, B.M., Chopik, W.J., & Moors, A.C. (2017). Fathers’decline in testosterone and synchrony with partner testosterone during pregnancy predicts greater postpartum relationship investment. Hormones and Behavior, 90, 39–47. https://doi.org/10.1016/j.yhbeh.2016.07.005
+
+Timmons, A.C., Margolin, G., & Saxbe, D.E. (2015). Physiological linkage in couples and its implications forindividual and interpersonal functioning: A literature review. J. Fam.Psychol.29,  720–731.
+
+van Anders, S.M. (2013). Beyond masculinity: testosterone, gender/sex, and human social behavior in a comparative context. Front. Neuroendocrinol. 34(3), 198–210.
+
+#  Load packages
+
+```{r Load packages}
+# Add additional packages you need
+# To install a package, run the following ONCE (and only once on your computer)
+# install.packages("psych")  
+library(here)  # makes reading data more consistent
+library(tidyverse)  # for data manipulation and plotting
+library(haven)  # for importing SPSS/SAS/Stata data
+library(brms)  # for Bayesian multilevel analysis
+library(lattice)  # for dotplot (working with lme4)
+library(sjPlot)  # for plotting effects
+library(broom.mixed)  # for summarizing results
+library(interactions)  # for plotting interactions
+library(modelsummary)  # for making tables
+library(psych)
+# Add the following so that the LOO will be included in the msummary table
+msummary_mixed <- function(models, coef_map = NULL, add_rows = NULL, ...) {
+  if (is.null(coef_map)) {
+    if (!"list" %in% class(models)) {
+      models <- list(models)
+    }
+    for (model in models) {
+      coef_map <- union(coef_map, tidy(model)$term)
+    }
+  }
+  ranef_index <- grep("^(sd|cor)__", x = coef_map)
+  coef_map <- c(coef_map[-ranef_index], coef_map[ranef_index])
+  names(coef_map) <- coef_map
+library(dplyr)
+  rows <- data.frame(term = c("Fixed Effects", "Random Effects"))
+  rows <- cbind(rows, rbind(rep("", length(models)), 
+                            rep("", length(models))))
+  length_fes <- length(coef_map) - length(ranef_index)
+  attr(rows, 'position') <- c(1, (length_fes + 1) * 2)
+  modelsummary::msummary(models, coef_map = coef_map, add_rows = rows, ...)
+}
+theme_set(theme_bw())  # Theme; just my personal preference
+```
+
+# Import data
+
+```{r Import Data}
+library(foreign)
+df <- read.spss("MLM_10.28.20.sav", use.value.label=TRUE, to.data.frame=TRUE)
+```
+
+# Convert wide data to long format
+```{r Convert Wide Data to Long Format}
+
+# Using the new `tidyr::pivot_longer()` function
+df_LONG <- df %>% 
+  pivot_longer(
+    c(Mompn1:Mompn3, Dadpn1:Dadpn3), # variables that are repeated measures
+    # Convert 8 columns to 3: 2 columns each for anti/read (.value), and 
+    # one column for time
+    names_to = c(".value", "Testo_Measurement"),
+    # Extract the names "anti"/"read" from the names of the variables for the 
+    # value columns, and then the number to the "time" column
+    names_pattern = "(Mompn|Dadpn)([1-3])", 
+    # Convert the "time" column to integers
+    names_transform = list(time = as.integer)
+  )
+df_LONG %>% 
+  select(CoupID, Testo_Measurement, Mompn,Dadpn, everything())
+
+```
+
+# Make variables for between and within variance for prenatal testosterone for expectant mothers
+
+```{r Deconvolve between and within covariance for prenatal testosterone for expectant mothers}
+df_LONG <- df_LONG %>% 
+  group_by(CoupID) %>% 
+  # The `across()` function can be used to operate the same procedure on 
+  # multiple variables
+  mutate(across(c(Mompn), 
+                # The `.` means the variable to be operated on
+                list("pmc" = ~ . - mean(., na.rm = TRUE)))) %>% 
+  ungroup()
+```
+
+# Variable key
+
+"Mompn_pmc" is the person-mean centered prenatal testosterone level for expectant moms. 
+"Testo1pn_Average" is the person-mean prenatal testosterone level for expectant moms. 
+"Dadpn"" is prenatal testosterone level for expectant dads. 
+
+# Model equations for question 1 multilevel analysis
+
+Within-person:
+$$\text{Dadpn}_{ti} = \beta_{0i} +  \beta_{1j} \text{Mompn_pmc}_{ti} + e_{ti}$$
+Between-person:
+$$\beta_{0i} = \gamma_{00} + \gamma_{01} \text{Testo1pn_Average}_{i} + u_{0i}\\
+\beta_{1i} = \gamma_{10} +  u_{1i}\\$$ 
+
+# Making unconditional models for all variables
+```{r}
+m0_Model_daddy <- brm(Dadpn ~ (1 | CoupID), data = df_LONG, 
+               seed = 2152)
+```
+
+```{r}
+m0_Model_daddy
+```
+
+```{r}
+# Use family = bernoulli for a binary outcome; to be discussed in a later week
+m0_Mompn_pmc <- brm(Mompn_pmc ~ (1 | CoupID), data = df_LONG, 
+               seed = 2152)
+```
+
+```{r}
+m0_Mompn_pmc
+```
+
+```{r}
+# Use family = bernoulli for a binary outcome; to be discussed in a later week
+m0_Testo1pn_Average <- brm(Testo1pn_Average ~ (1 | CoupID), data = df_LONG, 
+               seed = 2152)
+```
+
+```{r}
+m0_Testo1pn_Average
+```
+# Using unconditional models to assess intra-class correlation and decompose variance
+
+```{r}
+# Warning: Rows containing NAs were excluded from the model.
+# Daddy (expectant dad-testosterone)
+post_daddy <- posterior_samples(m0_Model_daddy, pars = c("sd", "sigma"))
+
+# Posterior of ICC: tau_0^2 / (tau_0^2 + sigma^2)
+icc_samples_daddy <- post_daddy$sd_CoupID__Intercept^2 / 
+  (post_daddy$sd_CoupID__Intercept^2 + post_daddy$sigma^2)
+
+# Warning: Rows containing NAs were excluded from the model.
+# Mommy_within (expectant mother-testosterone)
+post_mommy_within <- posterior_samples(m0_Mompn_pmc, pars = c("sd", "sigma"))
+
+# Posterior of ICC: tau_0^2 / (tau_0^2 + sigma^2)
+icc_samples_mommy_within <- post_mommy_within$sd_CoupID__Intercept^2 / 
+  (post_mommy_within$sd_CoupID__Intercept^2 + post_mommy_within$sigma^2)
+
+# Warning: Rows containing NAs were excluded from the model.
+# Mommy_between (expectant mother-testosterone)
+post_mommy_between <- posterior_samples(m0_Testo1pn_Average, pars = c("sd", "sigma"))
+
+# Posterior of ICC: tau_0^2 / (tau_0^2 + sigma^2)
+icc_samples_mommy_betwewen <- post_mommy_between$sd_CoupID__Intercept^2 / 
+  (post_mommy_between$sd_CoupID__Intercept^2 + post_mommy_between$sigma^2)
+
+# Print ICCs
+c(daddy = mean(icc_samples_daddy),mommy_within = mean(icc_samples_mommy_within), mommy_between = mean(icc_samples_mommy_betwewen))
+
+```
+# Question 1 MLM model 
+```{r Aim 1 MLM Model}
+Model_daddy <- brm(Dadpn ~ Testo1pn_Average + Mompn_pmc + (Mompn_pmc | CoupID),
+               seed = 2152,
+               control = list(max_treedepth = 15, adapt_delta = .995), 
+               iter = 4000,
+      
+                       data = df_LONG)
+```
+
+# Question 1 MLM model results
+
+```{r Aim 1 MLM Model Results}
+Model_daddy
+```
+# Results description 
+
+Table 1 shows the parameter estimates of the model. The between-couple coefficient of expectant mothers' testosterone was estimated to be 0.89, 95% CI [0.30, 1.45], which was statistically significant. Thus, each unit increase in expectant mothers' average (or couple-level) prenatal testosterone predicts expectant fathers' prenatal testosterone. The within-couple coefficient of expectant mothers' prenatal testosterone was estimated to be 0.28, 95% CI [-0.17, 0.73], indicating a positive, but not significant, association between expectant mothers' within-person testosterone at the prenatal visit and expectant fathers' prenatal testosterone. There was also substantial variations in the slopes of mothers' within-person testosterone. 
+
+Thus, our first study question was partially supported. As expected, the between-person coefficient of mothers' prenatal testosterone predicts expectant fathers' prenatal testosterone. However, the within-person coefficient of mothers' prenatal testosterone does not predict expectant fathers' prenatal testosterone. From our perspective, the lack of a within-person effect does not detract from our current project. In fact, the lack of within-person effect provides more insight about our sample, and may indicate that synchrony is more driven by stable, trait level differences as opposed to state-level differences in testosterone within a short study visit.  
+
+Figure 1 displays predicted expectant fathers' testosterone on the y-axis and expecting mothers' testosterone levels on the x-axis. The lines' slope represents the within-person effects of pregnant mothers' testosterone on expectant fathers' testosterone, and the distances between the lines depict the between-person expectant mothers' testosterone effects. Of note, the lines show a great deal of variance in their range, which suggests that expectant mothers' within-person testosterone had a substantial amount of variance. Though all data was truncated before analyses and met assumptions of skewness (skewness < 1), we will consult with other papers to ensure that our within-subject differences in testosterone levels are in line with other studies. 
+
+With our preliminary hypothesis partially supported, we can now begin to answer our second question: does prenatal couple synchrony matter for postpartum relationship outcomes? We will move forward with a focus on expectant mothers' between-subject testosterone. (Stay tuned...!)
+
+# Table 1 model parameter estimates
+
+```{r Table 1 }
+
+msummary_mixed(list("Bayesian MLM" = Model_daddy), 
+               statistic = "conf.int", 
+               looic = TRUE)
+```
+
+# Figure 1 expectant mothers' between and within person testosterone as a predictor of expectant fathers' testosterone
+
+```{r Figure 1 }
+augment(Model_daddy) %>% 
+  mutate(MomTesto = Mompn_pmc + Testo1pn_Average) %>% 
+  ggplot(aes(x = MomTesto, y = Dadpn, color = factor(CoupID))) +
+  # Add points
+  geom_point(size = 0.5, alpha = 0.2) + 
+  # Add within-cluster lines
+  geom_smooth(aes(y = .fitted), 
+              method = "lm", se = FALSE, size = 0.5) + 
+  # Add group means
+  stat_summary(aes(x = MomTesto, y = Dadpn, 
+                   fill = factor(CoupID)), 
+               color = "red",  # add border
+               fun = mean, 
+               geom = "point",
+               shape = 24,
+               # use triangles
+               size = 2.5) + 
+  # Add between coefficient
+  geom_smooth(aes(x = MomTesto, y = .fitted), 
+              method = "lm", se = TRUE, 
+              color = "black") + 
+  labs(y = "Dadpn") + 
+  # Suppress legend
+  guides(color = FALSE, fill = FALSE)
+```
+
+
+
+
